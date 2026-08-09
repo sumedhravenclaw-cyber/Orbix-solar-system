@@ -1,0 +1,205 @@
+/* Closed state. Kept mounted so both directions animate; removed from the tab
+   order and from assistive tech via `inert` while closed. */
+.wrapper {
+  opacity: 0;
+  transform: translate3d(16px, 0, 0);
+  pointer-events: none;
+
+  /* Exit is quicker than the entrance, so dismissal feels immediate. */
+  transition:
+    opacity var(--dur-exit) var(--ease-in),
+    transform var(--dur-exit) var(--ease-in);
+}
+
+.wrapper[data-open='true'] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+
+  transition:
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-slow) var(--ease-spring);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  flex: 0 0 auto;
+  color: var(--ink-mute);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.close:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.swatch {
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow:
+    0 0 18px -2px currentColor,
+    inset -5px -5px 10px rgb(0 0 0 / 60%);
+}
+
+.titleText {
+  min-inline-size: 0;
+}
+
+.name {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.classification {
+  composes: hud-label from global;
+  margin-block-start: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+/* Cells cascade in; the React key on the target restarts it per body. */
+.cell {
+  animation: cell-in var(--dur-base) var(--ease) both;
+  animation-delay: calc(var(--index) * 25ms + 60ms);
+  min-inline-size: 0;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--line);
+}
+
+.rangeValue {
+  composes: hud-value from global;
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  color: var(--cyan);
+}
+
+.satellites {
+  padding-block-start: var(--space-2);
+}
+
+.satelliteList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.satelliteList > li {
+  animation: cell-in var(--dur-base) var(--ease) both;
+  animation-delay: calc(var(--index) * var(--stagger-step) + 100ms);
+}
+
+.satellite {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: 30px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.satellite:hover {
+  background: rgb(255 255 255 / 5%);
+  border-color: var(--line);
+}
+
+.satellite[aria-pressed='true'] {
+  background: var(--cyan-wash);
+  border-color: var(--cyan-edge);
+}
+
+.satelliteDot {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 7px -1px currentColor;
+}
+
+.satelliteName {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--ink-dim);
+  flex: 1 1 auto;
+  text-align: start;
+}
+
+.satellite[aria-pressed='true'] .satelliteName {
+  color: var(--cyan);
+}
+
+.satellitePeriod {
+  composes: hud-value from global;
+  font-size: var(--text-micro);
+  color: var(--ink-mute);
+}
+
+.note {
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  color: var(--ink-mute);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--line);
+  /* Keeps the measure inside the comfortable 35–60 character band. */
+  max-inline-size: 40ch;
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell,
+  .satelliteList > li {
+    animation: none;
+  }
+}

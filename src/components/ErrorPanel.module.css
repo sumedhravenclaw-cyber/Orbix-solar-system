@@ -1,0 +1,73 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-boot);
+  display: grid;
+  place-content: center;
+  padding: var(--space-5);
+  background: var(--space);
+}
+
+.panel {
+  composes: hud-panel reticle from global;
+  max-inline-size: 26rem;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.title {
+  font-size: var(--text-lg);
+  color: var(--ink);
+}
+
+.message {
+  margin-block-start: var(--space-3);
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+.detail {
+  margin-block-start: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-mute);
+  word-break: break-word;
+  text-align: start;
+}
+
+.action {
+  margin-block-start: var(--space-5);
+  min-block-size: var(--touch-min);
+  padding-inline: var(--space-5);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+
+  color: var(--on-accent);
+  background: var(--amber);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-instant) var(--ease);
+}
+
+.action:hover {
+  background: #ffb948;
+}
+
+.action:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action:active {
+    transform: none;
+  }
+}

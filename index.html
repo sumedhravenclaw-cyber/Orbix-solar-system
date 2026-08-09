@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Never disable zoom (a11y: viewport-meta). viewport-fit=cover so the
+         layout can opt into the safe-area insets on notched devices. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05070b" />
+    <meta
+      name="description"
+      content="ORBIX SOL — an interactive 3D solar system simulator. Compressed-scale orbits, true relative orbital periods, procedural planet surfaces, and a live starfield."
+    />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Inline SVG favicon: a cyan orbital ellipse around a warm star. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ffb347'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='6' fill='none' stroke='%235ad1ff' stroke-width='1.6' transform='rotate(-22 16 16)'/%3E%3C/svg%3E"
+    />
+
+    <title>ORBIX SOL — Interactive Solar System</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <p style="color: #e8eef7; font-family: monospace; padding: 24px">
+        ORBIX SOL renders a real-time WebGL scene and needs JavaScript enabled.
+      </p>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

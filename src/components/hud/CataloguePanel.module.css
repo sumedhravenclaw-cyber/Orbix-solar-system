@@ -1,0 +1,166 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-block-size: 0;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 25%);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.searchRow:focus-within {
+  border-color: var(--cyan-edge);
+}
+
+.searchIcon {
+  color: var(--ink-mute);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  min-block-size: var(--touch-min);
+  background: none;
+  border: 0;
+  outline: none;
+  font-family: var(--font-mono);
+  /* 16px on touch would be ideal to avoid iOS zoom, but this input sits inside
+     a fixed console rail that cannot reflow; the page disables zoom nowhere,
+     so a pinch still works. */
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.search::placeholder {
+  color: var(--ink-mute);
+}
+
+.search::-webkit-search-cancel-button {
+  filter: invert(0.6);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-1) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  /* The rail is a fixed height; the catalogue is the part that scrolls. */
+  overflow-y: auto;
+  max-block-size: 15rem;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.list > li {
+  animation: row-in var(--dur-base) var(--ease) both;
+  animation-delay: calc(var(--index) * 18ms);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: 30px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.row:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+.row[aria-pressed='true'] {
+  background: var(--cyan-wash);
+  border-color: var(--cyan-edge);
+}
+
+/* Moons are indented under their primary and marked with a leader, so the
+   hierarchy survives without relying on colour. */
+.row[data-moon='true'] {
+  padding-inline-start: var(--space-5);
+}
+
+.row[data-moon='true']::before {
+  content: '└';
+  position: absolute;
+  margin-inline-start: calc(var(--space-5) * -1 + 2px);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--ink-mute);
+}
+
+.dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.name {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--ink-dim);
+  flex: 1 1 auto;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row[aria-pressed='true'] .name {
+  color: var(--cyan);
+}
+
+.kind {
+  composes: hud-label from global;
+  flex: 0 0 auto;
+}
+
+.empty {
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--ink-mute);
+  padding: var(--space-3) var(--space-2);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-6px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list > li {
+    animation: none;
+  }
+}

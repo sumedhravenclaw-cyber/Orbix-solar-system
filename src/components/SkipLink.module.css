@@ -1,0 +1,24 @@
+/* Visible only when focused — the first stop for a keyboard user, jumping
+   past the canvas straight to the controls. */
+.skip {
+  position: fixed;
+  z-index: calc(var(--z-boot) + 1);
+  inset-block-start: var(--space-3);
+  inset-inline-start: var(--space-3);
+
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+
+  color: var(--on-accent);
+  background: var(--amber);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+
+  transform: translate3d(0, -160%, 0);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.skip:focus-visible {
+  transform: translate3d(0, 0, 0);
+}

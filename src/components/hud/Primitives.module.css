@@ -1,0 +1,158 @@
+/* Shared console primitives. Every HUD surface is assembled from these, so the
+   bezel, label and readout language stays identical across panels. */
+
+.panel {
+  composes: hud-panel reticle from global;
+  padding: var(--space-4);
+  pointer-events: auto;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+/* The amber tick that opens every section heading. */
+.tick {
+  inline-size: 2px;
+  block-size: 10px;
+  border-radius: 1px;
+  background: var(--amber);
+  flex: 0 0 auto;
+}
+
+.headingLabel {
+  composes: hud-label from global;
+  color: var(--ink-dim);
+  flex: 0 0 auto;
+}
+
+.headingRule {
+  composes: hud-rule from global;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.dot {
+  display: inline-block;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.readout {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 2%);
+  padding: var(--space-2) var(--space-3);
+  min-inline-size: 0;
+}
+
+.readoutLabel {
+  composes: hud-label from global;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readoutValue {
+  composes: hud-value from global;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin-block-start: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+.readoutUnit {
+  font-size: var(--text-micro);
+  color: var(--ink-mute);
+}
+
+/* Layer / mode switch. 44px on touch, tightened once a pointer is present —
+   a mouse does not need a 44px target and the console gets denser. */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--touch-min);
+  inline-size: 100%;
+  padding: var(--space-2) var(--space-3);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  text-align: start;
+
+  color: var(--ink-mute);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+
+.toggle:hover {
+  color: var(--ink-dim);
+  border-color: var(--line-strong);
+  background: rgb(255 255 255 / 4%);
+}
+
+.toggle[aria-pressed='true'] {
+  color: var(--cyan);
+  border-color: var(--cyan-edge);
+  background: var(--cyan-wash);
+}
+
+/* The switch reads as on/off by shape as well as colour, so the state does not
+   depend on colour perception alone. */
+.switchTrack {
+  inline-size: 22px;
+  block-size: 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  padding: 1px;
+  flex: 0 0 auto;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.toggle[aria-pressed='true'] .switchTrack {
+  background: var(--cyan-wash);
+  border-color: var(--cyan-edge);
+}
+
+.switchKnob {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--ink-mute);
+  transition:
+    transform var(--dur-base) var(--ease-spring),
+    background-color var(--dur-fast) var(--ease);
+}
+
+.toggle[aria-pressed='true'] .switchKnob {
+  background: var(--cyan);
+  transform: translateX(10px);
+}
+
+@media (pointer: fine) {
+  .toggle {
+    min-block-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switchKnob {
+    transition: none;
+  }
+}

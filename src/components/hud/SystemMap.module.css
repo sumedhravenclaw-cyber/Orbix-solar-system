@@ -1,0 +1,114 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.map {
+  inline-size: 100%;
+  aspect-ratio: 1;
+  display: block;
+  /* Reserve the square before paint so the rail never reflows. */
+  contain: layout paint;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.axis {
+  stroke: var(--line);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 5;
+}
+
+.sun {
+  fill: var(--amber);
+  filter: drop-shadow(0 0 6px rgb(245 165 36 / 70%));
+}
+
+.blip {
+  transition: r var(--dur-fast) var(--ease);
+}
+
+.halo {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  animation: ping 2s var(--ease) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.7);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: 26px;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.legendItem:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+.legendItem[aria-pressed='true'] {
+  background: var(--cyan-wash);
+}
+
+.swatch {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.legendName {
+  composes: hud-label from global;
+  color: var(--ink-dim);
+  flex: 1 1 auto;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legendRange {
+  composes: hud-value from global;
+  font-size: var(--text-micro);
+  color: var(--ink-mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo {
+    animation: none;
+    opacity: 0.8;
+  }
+}

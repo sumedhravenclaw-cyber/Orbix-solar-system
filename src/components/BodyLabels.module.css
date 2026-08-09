@@ -1,0 +1,56 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-labels);
+  pointer-events: none;
+  /* Its own containment scope: the engine writes transforms here every frame
+     and must never trigger layout in the rest of the page. */
+  contain: strict;
+}
+
+.label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+
+  /* Legible over both the black of space and the white of the Sun. */
+  text-shadow:
+    0 0 10px rgb(0 0 0 / 95%),
+    0 0 3px rgb(0 0 0 / 80%);
+
+  /* Only colour transitions. `transform` and `opacity` are written directly by
+     the render loop, so transitioning them would fight the engine. */
+  transition: color var(--dur-fast) var(--ease);
+  will-change: transform, opacity;
+
+  /* Start hidden: the engine assigns the real opacity on its first frame, and
+     an unpositioned label must never flash in the top-left corner. */
+  opacity: 0;
+}
+
+/* Satellites are subordinate — dimmer, and prefixed so the hierarchy survives
+   without relying on colour. */
+.label[data-moon='true'] {
+  color: var(--ink-mute);
+  letter-spacing: var(--tracking-wide);
+}
+
+.label[data-moon='true']::before {
+  content: '· ';
+  color: var(--violet);
+}
+
+.label[data-active='true'] {
+  color: var(--cyan);
+  text-shadow:
+    0 0 12px rgb(0 0 0 / 95%),
+    0 0 18px rgb(56 189 248 / 55%);
+}

@@ -1,0 +1,265 @@
+.dock {
+  position: fixed;
+  z-index: var(--z-hud);
+  inset-inline: 0;
+  inset-block-end: max(var(--space-4), env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--space-4);
+  pointer-events: none;
+
+  animation: dock-in var(--dur-slow) var(--ease) both;
+  animation-delay: 100ms;
+}
+
+.bar {
+  composes: hud-panel reticle from global;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  inline-size: min(38rem, 100%);
+  pointer-events: auto;
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: var(--touch-min);
+  min-inline-size: 5.5rem;
+  padding-inline: var(--space-3);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 3%);
+  cursor: pointer;
+
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-instant) var(--ease);
+}
+
+.transport:hover {
+  background: var(--amber-wash);
+  border-color: rgb(245 165 36 / 45%);
+}
+
+/* Bounded press feedback — it cannot shift a neighbour. */
+.transport:active {
+  transform: scale(0.97);
+}
+
+.transportIcon {
+  display: grid;
+  place-items: center;
+  color: var(--amber);
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding-inline: var(--space-3);
+  border-inline: 1px solid var(--line);
+}
+
+.clockValue {
+  composes: hud-value from global;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.clockUnit {
+  font-size: var(--text-micro);
+  color: var(--ink-mute);
+}
+
+.rate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.track {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-inline-size: 3rem;
+}
+
+.slider {
+  appearance: none;
+  inline-size: 100%;
+  margin: 0;
+  block-size: var(--touch-min); /* full-height hit area, thin visible track */
+  background: none;
+  cursor: pointer;
+}
+
+/* Detent marks, hung below the track and clear of the 12px thumb. Inset by
+   half a thumb so the end marks sit under the thumb's centre at the extremes,
+   not under its edge. */
+.ticks {
+  position: absolute;
+  inset-block-start: calc(50% + 8px);
+  inset-inline: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.tick,
+.tickHome {
+  inline-size: 1px;
+  border-radius: 1px;
+}
+
+.tick {
+  block-size: 3px;
+  background: var(--line-strong);
+}
+
+/* The 1× baseline — the rate you return to, so it is findable without
+   counting notches. Taller and amber rather than colour-only. */
+.tickHome {
+  block-size: 6px;
+  background: var(--amber);
+  opacity: 0.8;
+}
+
+.slider::-webkit-slider-runnable-track {
+  block-size: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--amber), rgb(148 163 184 / 20%));
+}
+
+.slider::-moz-range-track {
+  block-size: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--amber), rgb(148 163 184 / 20%));
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: 12px;
+  block-size: 12px;
+  margin-block-start: -5px;
+  border-radius: 2px; /* a square index mark reads as an instrument */
+  border: 1px solid #05070b;
+  background: var(--amber);
+  box-shadow: 0 0 10px rgb(245 165 36 / 55%);
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+
+.slider::-moz-range-thumb {
+  inline-size: 12px;
+  block-size: 12px;
+  border-radius: 2px;
+  border: 1px solid #05070b;
+  background: var(--amber);
+  box-shadow: 0 0 10px rgb(245 165 36 / 55%);
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+
+.slider:hover::-webkit-slider-thumb,
+.slider:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.slider:hover::-moz-range-thumb,
+.slider:focus-visible::-moz-range-thumb {
+  transform: scale(1.2);
+}
+
+.rateValue {
+  composes: hud-value from global;
+  min-inline-size: 2.75rem;
+  text-align: end;
+  font-size: var(--text-xs);
+  color: var(--amber);
+  flex: 0 0 auto;
+}
+
+.reset {
+  display: grid;
+  place-items: center;
+  inline-size: var(--touch-min);
+  block-size: var(--touch-min);
+  flex: 0 0 auto;
+  color: var(--ink-mute);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-instant) var(--ease);
+}
+
+.reset:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.reset:active {
+  transform: scale(0.95);
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (width <= 40rem) {
+  .bar {
+    gap: var(--space-3);
+    padding: var(--space-2);
+  }
+
+  .transport {
+    min-inline-size: var(--touch-min);
+    padding-inline: 0;
+  }
+
+  .transportLabel,
+  .clock {
+    display: none; /* the clock lives in the mobile top bar at this width */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock {
+    animation: none;
+  }
+
+  .transport:active,
+  .reset:active {
+    transform: none;
+  }
+
+  .slider::-webkit-slider-thumb,
+  .slider::-moz-range-thumb {
+    transition: none;
+  }
+}

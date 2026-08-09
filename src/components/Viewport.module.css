@@ -1,0 +1,34 @@
+.viewport {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-canvas);
+}
+
+/* The engine appends its own <canvas> in here, so the canvas is styled as a
+   descendant rather than by class. */
+.stage {
+  inline-size: 100%;
+  block-size: 100%;
+
+  /* Fades in once the first frame is composited, so the scene arrives rather
+     than snapping in behind the veil. */
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+.stage[data-ready='true'] {
+  opacity: 1;
+}
+
+/* Vignette + faint nebula wash. Purely decorative, so it must never eat a
+   pointer event destined for the canvas. */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-vignette);
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgb(0 0 0 / 0%) 38%, rgb(0 0 0 / 55%) 100%),
+    radial-gradient(70% 50% at 82% 12%, rgb(46 92 160 / 10%), rgb(0 0 0 / 0%) 70%),
+    radial-gradient(60% 45% at 12% 88%, rgb(150 70 160 / 7%), rgb(0 0 0 / 0%) 70%);
+}
