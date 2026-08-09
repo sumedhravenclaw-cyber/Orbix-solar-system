@@ -10,13 +10,14 @@ import {
   MeshStandardMaterial,
   Object3D,
   SphereGeometry,
+  Vector2,
   type Material,
 } from 'three';
 
 import type { BodyDatum, MoonDatum, MoonKind } from '../data/bodies';
 import { satellitesOf } from '../data/moons';
 import { moonAngularVelocity, moonOrbitRadius, moonRadius } from './scale';
-import { createSurfaceTexture } from './textures';
+import { createSurfaceMaps } from './textures';
 import type { SceneMoon } from './types';
 
 /**
@@ -55,20 +56,28 @@ export const createMoonMaterials = (): MoonMaterials => {
 
   for (const kind of Object.keys(MOON_SURFACES) as MoonKind[]) {
     const spec = MOON_SURFACES[kind];
-    const texture = createSurfaceTexture({
-      kind: 'rocky',
-      palette: spec.palette,
-      craters: spec.craters,
-    });
+    const surface = createSurfaceMaps(
+      { kind: 'rocky', palette: spec.palette, craters: spec.craters },
+      // Half the planet resolution: a moon is a few dozen pixels across even
+      // when its parent is the focus, and this is three builds off the boot.
+      512,
+    );
 
     byKind.set(
       kind,
       new MeshStandardMaterial({
-        map: texture,
-        bumpMap: texture,
-        bumpScale: 0.01,
-        roughness: 0.95,
+        map: surface.map,
+        // Real crater relief rather than the colour map doubling as a bump map.
+        // Three shared materials carry all fifteen moons, so the full PBR set
+        // costs three texture builds, not fifteen.
+        normalMap: surface.normalMap,
+        normalScale: new Vector2(1.15, 1.15),
+        roughnessMap: surface.roughnessMap,
+        roughness: 1,
         metalness: 0,
+        aoMap: surface.aoMap,
+        aoMapIntensity: 0.9,
+        envMapIntensity: 0.4,
       }),
     );
   }
@@ -78,6 +87,9 @@ export const createMoonMaterials = (): MoonMaterials => {
     dispose() {
       for (const material of byKind.values()) {
         material.map?.dispose();
+        material.normalMap?.dispose();
+        material.roughnessMap?.dispose();
+        material.aoMap?.dispose();
         material.dispose();
       }
     },
@@ -162,8 +174,17 @@ function buildMoon(
   const material = materials.byKind.get(datum.kind);
   if (!material) throw new Error(`No shared material for moon kind "${datum.kind}".`);
 
-  const mesh = new Mesh(new SphereGeometry(radius, 24, 16), material);
+  // 48×32 rather than 24×16: a moon is only ever drawn when the camera has
+  // closed on its parent, and at that range a 24-segment silhouette is visibly
+  // a polygon. The LOD rule keeps these off-screen the rest of the time.
+  const geometry = new SphereGeometry(radius, 48, 32);
+  geometry.setAttribute('uv1', geometry.getAttribute('uv'));
+
+  const mesh = new Mesh(geometry, material);
   mesh.name = datum.key;
+  // Transits: a moon between the Sun and its planet drops a real shadow.
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   anchor.add(mesh);
 
   // Generous hit target: most moons are two or three pixels across.

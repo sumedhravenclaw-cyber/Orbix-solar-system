@@ -1,11 +1,12 @@
 import {
   ACESFilmicToneMapping,
-  AmbientLight,
   MathUtils,
   MeshBasicMaterial,
+  PCFShadowMap,
   PerspectiveCamera,
   PointLight,
   Scene,
+  ShaderMaterial,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -14,16 +15,19 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 import { BODIES, type BodyKey, type PlanetKey } from '../data/bodies';
 import { CameraDirector } from './CameraDirector';
+import { isLowPowerDevice } from './capability';
 import { createAsteroidBelt, type AsteroidBelt } from './createAsteroidBelt';
 import { createMoonMaterials, positionMoons } from './createMoons';
 import { createPlanet, positionOnOrbit } from './createPlanet';
 import { createStarfield, type Starfield } from './createStarfield';
 import { createSun } from './createSun';
 import { DisposalRegistry, yieldToBrowser } from './disposal';
+import { createEnvironment } from './environment';
 import { Picker } from './Picker';
 import { SUN_RADIUS, YEAR_SECONDS, orbitRadius } from './scale';
 import type {
@@ -60,6 +64,12 @@ const PLOT_EXTENT = orbitRadius(30.07);
  */
 const SATELLITE_RANGE_FACTOR = 46;
 
+/** Layer the Sun is additionally assigned to; the bloom pass renders only it. */
+const BLOOM_LAYER = 1;
+
+/** Dolly floor when nothing is focused; per-body while something is. */
+const DEFAULT_MIN_DISTANCE = 0.6;
+
 const DEFAULT_LAYERS: LayerState = {
   orbits: true,
   labels: true,
@@ -74,7 +84,9 @@ export class SolarSystemEngine {
   readonly #scene = new Scene();
   readonly #camera: PerspectiveCamera;
   readonly #controls: OrbitControls;
-  readonly #composer: EffectComposer;
+  /** Sun-only pass feeding the bloom; never drawn to screen directly. */
+  readonly #bloomComposer: EffectComposer;
+  readonly #finalComposer: EffectComposer;
   readonly #bloom: UnrealBloomPass;
   readonly #container: HTMLElement;
   readonly #canvas: HTMLCanvasElement;
@@ -146,6 +158,27 @@ export class SolarSystemEngine {
     this.#renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.#renderer.setSize(width, height, false);
     this.#renderer.toneMapping = ACESFilmicToneMapping;
+    // Slightly hot, so the lit hemisphere carries real highlight range and the
+    // filmic shoulder does the compressing. ACES at 1.0 renders this scene flat.
+    this.#renderer.toneMappingExposure = 1.18;
+
+    // Must precede every castShadow/receiveShadow flag in the scene: without it
+    // the shadow map is never allocated and all those flags are silently inert.
+    //
+    // PCF, not PCFSoft (deprecated in r185, silently downgrades to this anyway)
+    // and not VSM, which Three does not support for PointLights — and the Sun
+    // is a PointLight because it has to light planets on every side at once.
+    //
+    // A point-light shadow is a cube map: six extra renders of the scene per
+    // frame, measured at ~7.3ms of a 16.7ms budget. That is affordable on a
+    // desktop GPU and is not affordable anywhere else, so weak devices trade
+    // the ring and transit shadows for the frame rate.
+    const shadows = !isLowPowerDevice();
+    this.#renderer.shadowMap.enabled = shadows;
+    this.#renderer.shadowMap.type = PCFShadowMap;
+    // Refreshed explicitly once per frame in #renderFrame — see the note there
+    // for why the automatic rebuild is wrong with a two-pass composer.
+    this.#renderer.shadowMap.autoUpdate = false;
 
     this.#camera = new PerspectiveCamera(50, width / height, 0.1, 4000);
 
@@ -156,20 +189,44 @@ export class SolarSystemEngine {
       rotateSpeed: 0.55,
       zoomSpeed: 0.85,
       panSpeed: 0.6,
-      minDistance: 0.6,
+      minDistance: DEFAULT_MIN_DISTANCE,
       maxDistance: 620,
     });
     this.#registry.track(this.#controls);
 
     this.#director = new CameraDirector(this.#camera, this.#controls, reducedMotion);
 
-    // --- Post-processing: bloom is what makes the star read as a light source
-    this.#composer = new EffectComposer(this.#renderer);
-    this.#composer.addPass(new RenderPass(this.#scene, this.#camera));
-    this.#bloom = new UnrealBloomPass(new Vector2(width, height), 0.5, 0.5, 0.7);
-    this.#composer.addPass(this.#bloom);
-    this.#composer.addPass(new OutputPass());
-    this.#registry.track(this.#composer);
+    // --- Post-processing ----------------------------------------------------
+    // Bloom is SELECTIVE — it runs over a pass that contains the Sun and
+    // nothing else.
+    //
+    // A whole-screen bloom cannot tell a star from a sunlit planet. It only
+    // sees luminance, so as soon as a planet filled the frame its lit
+    // hemisphere was blurred back across the entire image: measured at 2×
+    // planet radius, 100% of pixels came out above 200 luminance — a white
+    // screen. No threshold fixes that, because the planet's day side and the
+    // star are the same brightness by the time the planet is close.
+    //
+    // Restricting the bloom input by layer fixes it at the source: the star
+    // still reads as a light source, and a planet stays a lit physical object
+    // however close the camera gets.
+    this.#bloomComposer = new EffectComposer(this.#renderer);
+    this.#bloomComposer.renderToScreen = false;
+    this.#bloomComposer.addPass(new RenderPass(this.#scene, this.#camera));
+    // Threshold 0: everything reaching this pass is already the Sun.
+    // Strength 0.45 was matched against the previous whole-screen bloom on a
+    // Sun-filling frame (mean luminance 208 vs 203, hot pixels 54% vs 46%), so
+    // the star looks as it always did — only the planets stopped glowing.
+    this.#bloom = new UnrealBloomPass(new Vector2(width, height), 0.45, 0.6, 0);
+    this.#bloomComposer.addPass(this.#bloom);
+
+    this.#finalComposer = new EffectComposer(this.#renderer);
+    this.#finalComposer.addPass(new RenderPass(this.#scene, this.#camera));
+    this.#finalComposer.addPass(this.#createBloomMixPass());
+    this.#finalComposer.addPass(new OutputPass());
+
+    this.#registry.track(this.#bloomComposer);
+    this.#registry.track(this.#finalComposer);
     this.#registry.track(this.#bloom);
 
     // --- Lighting -----------------------------------------------------------
@@ -177,9 +234,27 @@ export class SolarSystemEngine {
     // planet gets a real terminator that sweeps round as it orbits. decay = 0
     // keeps Neptune lit: true inverse-square across a 77× distance range would
     // leave the outer system black.
-    this.#scene.add(new PointLight(0xfff1d6, 2.6, 0, 0));
-    // A whisper of fill so night sides read as shadow rather than as holes.
-    this.#scene.add(new AmbientLight(0x22334d, 0.16));
+    const sun = new PointLight(0xfff1d6, 2.6, 0, 0);
+    sun.castShadow = shadows;
+    sun.shadow.mapSize.set(1024, 1024);
+    // The cube shadow camera has to span the whole system, so depth precision
+    // is thin. normalBias offsets along the surface normal instead of along the
+    // light ray, which is what actually survives on spheres this curved —
+    // a plain depth bias at this range either acne-stripes or peter-pans.
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 700;
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.04;
+    this.#scene.add(sun);
+
+    // Ambient comes from a pre-filtered environment rather than an AmbientLight.
+    // A constant added to every fragment flattens precisely the shading that
+    // makes a sphere read as a sphere; an irradiance map varies with surface
+    // direction and gives the limb something to reflect.
+    const environment = createEnvironment(this.#renderer);
+    this.#scene.environment = environment.texture;
+    this.#scene.environmentIntensity = 0.6;
+    this.#registry.track(environment);
 
     this.#picker = new Picker(canvas, this.#camera, {
       onSelect: (key) => this.#callbacks.onSelect(key),
@@ -188,6 +263,63 @@ export class SolarSystemEngine {
     this.#registry.track(this.#picker);
 
     this.#attachListeners();
+  }
+
+  /**
+   * Composites the Sun-only bloom back over the beauty pass.
+   *
+   * Additive, and deliberately placed before OutputPass so the sum is tone
+   * mapped as one image — adding glow *after* the filmic curve is what makes
+   * bloom look like a sticker rather than light.
+   */
+  #createBloomMixPass(): ShaderPass {
+    const pass = new ShaderPass(
+      new ShaderMaterial({
+        uniforms: {
+          baseTexture: { value: null },
+          bloomTexture: { value: this.#bloomComposer.renderTarget2.texture },
+        },
+        vertexShader: /* glsl */ `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          uniform sampler2D baseTexture;
+          uniform sampler2D bloomTexture;
+          varying vec2 vUv;
+          void main() {
+            gl_FragColor = texture2D(baseTexture, vUv) + texture2D(bloomTexture, vUv);
+          }
+        `,
+      }),
+      'baseTexture',
+    );
+    pass.needsSwap = true;
+    return pass;
+  }
+
+  /**
+   * Two passes: the Sun alone into the bloom buffer, then the whole scene with
+   * that buffer added back.
+   *
+   * The shadow map is driven manually here, and it has to be. Three rebuilds it
+   * inside every `render()` call, and it selects shadow casters with
+   * `object.layers.test(camera.layers)` — the *view* camera's mask. Left on
+   * automatic, the Sun-only pass would rebuild the map with no casters in it at
+   * all (wiping the ring and transit shadows), and the second rebuild would
+   * double the most expensive item in the frame. So: refresh once, on the pass
+   * that can actually see the casters.
+   */
+  #renderFrame(): void {
+    this.#camera.layers.set(BLOOM_LAYER);
+    this.#bloomComposer.render();
+
+    this.#camera.layers.set(0);
+    this.#renderer.shadowMap.needsUpdate = this.#renderer.shadowMap.enabled;
+    this.#finalComposer.render();
   }
 
   // ==========================================================================
@@ -234,6 +366,9 @@ export class SolarSystemEngine {
       if (datum.key === 'sun') {
         const sun = createSun(datum, pickMaterial);
         this.#sun = sun;
+        // The whole assembly — surface, halo, corona — is the only thing the
+        // bloom pass is allowed to see. Everything else stays on layer 0 alone.
+        sun.body.mesh.traverse((object) => object.layers.enable(BLOOM_LAYER));
         this.#scene.add(sun.body.mesh);
         this.#registry.trackSubtree(sun.body.mesh);
         this.#register(sun.body);
@@ -316,7 +451,10 @@ export class SolarSystemEngine {
     this.#camera.aspect = width / height;
     this.#camera.updateProjectionMatrix();
     this.#renderer.setSize(width, height, false);
-    this.#composer.setSize(width, height);
+    // setSize resizes the existing render targets in place, so the mix pass's
+    // reference to renderTarget2.texture stays valid across a resize.
+    this.#bloomComposer.setSize(width, height);
+    this.#finalComposer.setSize(width, height);
     this.#bloom.setSize(width, height);
     this.#director.reframe(this.#camera.aspect);
   }
@@ -352,6 +490,20 @@ export class SolarSystemEngine {
     if (this.#starfield) this.#starfield.material.uniforms.uTwinkle.value = reduced ? 0 : 1;
   }
 
+  /**
+   * Stop the zoom before the camera reaches the body's own surface.
+   *
+   * The dolly limit has to be per-body: a single scene-wide floor is either
+   * too far out for Mercury (radius 0.32) or far inside Jupiter (radius 2.68),
+   * and once the camera is inside the sphere the near faces are back-face
+   * culled and the view goes black. The multiplier clears the surface, the
+   * atmosphere shell at 1.06× and the hover emphasis at 1.09× on top of it,
+   * leaving the body filling the frame at closest approach.
+   */
+  #setApproachLimit(radius: number | null): void {
+    this.#controls.minDistance = radius === null ? DEFAULT_MIN_DISTANCE : radius * 1.35;
+  }
+
   /** Focus a body — planet or moon — or pass null to release the camera. */
   focus(key: BodyKey | null): void {
     this.#selected = key;
@@ -361,19 +513,24 @@ export class SolarSystemEngine {
     }
 
     if (key === null) {
+      this.#setApproachLimit(null);
       this.#director.release();
       return;
     }
 
     const planet = this.#bodyByKey.get(key as PlanetKey);
     if (planet) {
+      this.#setApproachLimit(planet.radius);
       this.#director.focus(planet.anchor, planet.radius);
       return;
     }
 
     // Focusing a moon frames the moon itself, not its parent.
     const satellite = this.#moonByKey.get(key);
-    if (satellite) this.#director.focus(satellite.moon.anchor, satellite.moon.radius);
+    if (satellite) {
+      this.#setApproachLimit(satellite.moon.radius);
+      this.#director.focus(satellite.moon.anchor, satellite.moon.radius);
+    }
   }
 
   resetView(): void {
@@ -381,6 +538,7 @@ export class SolarSystemEngine {
     for (const body of this.#bodies) {
       if (body.reticle) body.reticle.visible = false;
     }
+    this.#setApproachLimit(null);
     this.#director.home();
   }
 
@@ -490,7 +648,7 @@ export class SolarSystemEngine {
       this.#publishTelemetry();
     }
 
-    this.#composer.render();
+    this.#renderFrame();
   };
 
   #updateStars(): void {

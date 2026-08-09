@@ -2,7 +2,6 @@ import {
   CanvasTexture,
   Color,
   Mesh,
-  MeshLambertMaterial,
   MeshStandardMaterial,
   RepeatWrapping,
   SRGBColorSpace,
@@ -10,6 +9,7 @@ import {
 } from 'three';
 
 import { cylindricalSample, fbm } from './noise';
+import { patchShader, softenTerminator } from './shading';
 
 /**
  * Earth-specific detail: a separate cloud deck and night-side city lights.
@@ -77,17 +77,25 @@ const createCloudTexture = (): CanvasTexture => {
 };
 
 export const createCloudLayer = (planetRadius: number): Mesh => {
-  const mesh = new Mesh(
-    new SphereGeometry(planetRadius * 1.015, 48, 32),
-    // Lambert, not Standard: clouds need to catch the terminator but they have
-    // no meaningful roughness or metalness, so PBR is wasted shader work.
-    new MeshLambertMaterial({
-      map: createCloudTexture(),
-      transparent: true,
-      opacity: 0.62,
-      depthWrite: false,
-    }),
-  );
+  // Standard rather than Lambert: the deck has to sit in the same lighting
+  // model as the ground beneath it. Lambert ignores scene.environment, so the
+  // clouds stayed lit by direct sun alone and read as a flat decal against a
+  // surface that was picking up ambient sky.
+  const material = new MeshStandardMaterial({
+    map: createCloudTexture(),
+    transparent: true,
+    opacity: 0.62,
+    depthWrite: false,
+    roughness: 0.95,
+    metalness: 0,
+    envMapIntensity: 0.6,
+  });
+
+  // Match the ground's soft terminator, or the deck's day/night edge cuts
+  // across the planet's at a visibly different angle.
+  softenTerminator(material, 0.16);
+
+  const mesh = new Mesh(new SphereGeometry(planetRadius * 1.015, 96, 64), material);
   mesh.name = 'clouds';
   return mesh;
 };
@@ -154,13 +162,16 @@ const createNightTexture = (): CanvasTexture => {
  * light. Using onBeforeCompile keeps every other feature of MeshStandardMaterial
  * — shadows, tone mapping, fog — intact, which a bespoke ShaderMaterial would
  * throw away.
+ *
+ * Installed through `patchShader` so it composes with the terminator softening
+ * rather than overwriting it.
  */
 export const applyNightLights = (material: MeshStandardMaterial): void => {
   material.emissiveMap = createNightTexture();
   material.emissive = new Color(0xffffff);
   material.emissiveIntensity = 1.6;
 
-  material.onBeforeCompile = (shader) => {
+  patchShader(material, (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <emissivemap_fragment>',
       /* glsl */ `
@@ -175,7 +186,5 @@ export const applyNightLights = (material: MeshStandardMaterial): void => {
         #endif
       `,
     );
-  };
-
-  material.needsUpdate = true;
+  });
 };

@@ -13,6 +13,7 @@ import {
   Object3D,
   RingGeometry,
   SphereGeometry,
+  Vector2,
   Vector3,
   type Material,
 } from 'three';
@@ -22,7 +23,8 @@ import { createAtmosphere } from './atmosphere';
 import { createMoonSystem, type MoonMaterials } from './createMoons';
 import { applyNightLights, createCloudLayer } from './earthDetail';
 import { angularVelocity, bodyRadius, ellipseFor, ellipsePoint, spinVelocity } from './scale';
-import { createRingTexture, createSurfaceTexture } from './textures';
+import { softenTerminator } from './shading';
+import { createRingTexture, createSurfaceMaps } from './textures';
 import type { SceneBody } from './types';
 
 /**
@@ -108,10 +110,18 @@ const buildRingPlane = (datum: BodyDatum, planetRadius: number): Mesh | null => 
       roughness: 1,
       metalness: 0,
       depthWrite: false,
+      // A shadow caster is rendered depth-only, where `transparent` means
+      // nothing — without an alpha cutoff the ring plane would throw a solid
+      // disc of shadow across the planet instead of banded ringlets.
+      alphaTest: 0.06,
     }),
   );
   mesh.rotation.x = -Math.PI / 2; // lie in the planet's equatorial plane
   mesh.name = `${datum.key}:rings`;
+  // Both directions matter here: the rings stripe the planet, and the planet
+  // throws its own shadow back across the ring plane.
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   return mesh;
 };
 
@@ -142,17 +152,24 @@ export const createPlanet = (
   tiltGroup.rotation.z = MathUtils.degToRad(datum.tilt);
   anchor.add(tiltGroup);
 
-  const surface = createSurfaceTexture(datum.surface);
-  const isRocky = datum.surface.kind === 'rocky' || datum.surface.kind === 'earth';
+  const surface = createSurfaceMaps(datum.surface);
 
   const material = new MeshStandardMaterial({
-    map: surface,
-    roughness: isRocky ? 0.92 : 0.72,
+    map: surface.map,
+    normalMap: surface.normalMap,
+    // Tangent-space relief only — the silhouette stays a perfect sphere, which
+    // is the point: real displacement at this scale would round off into the
+    // same circle while costing a vertex budget the scene cannot spare.
+    normalScale: new Vector2(1, 1),
+    roughnessMap: surface.roughnessMap,
+    // The map supplies the variation; this is the ceiling it multiplies into.
+    roughness: 1,
     metalness: 0,
-    // Reusing the colour map as a bump map is free and gives rocky worlds
-    // believable micro-relief along the terminator.
-    bumpMap: isRocky ? surface : null,
-    bumpScale: isRocky ? 0.012 : 0,
+    aoMap: surface.aoMap,
+    aoMapIntensity: 0.85,
+    // Ambient and grazing reflections come from scene.environment. Water needs
+    // a fuller share of it — a specular sea is most of why Earth reads as wet.
+    envMapIntensity: surface.hasWater ? 0.85 : 0.55,
   });
 
   if (datum.key === 'earth') {
@@ -163,8 +180,21 @@ export const createPlanet = (
     material.emissiveIntensity = 0.03;
   }
 
-  const mesh = new Mesh(new SphereGeometry(radius, 64, 48), material);
+  // Air scatters sunlight around onto ground the direct beam misses; vacuum
+  // does not. Mercury keeps its razor terminator, Venus gets a wide soft one.
+  if (datum.atmosphere) {
+    softenTerminator(material, datum.earths > 3 ? 0.22 : 0.16);
+  }
+
+  const geometry = new SphereGeometry(radius, 128, 96);
+  // aoMap reads the second UV channel; SphereGeometry only ships the first.
+  geometry.setAttribute('uv1', geometry.getAttribute('uv'));
+
+  const mesh = new Mesh(geometry, material);
   mesh.name = datum.key;
+  // Receives moon and ring shadows; casts onto its own moons.
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   tiltGroup.add(mesh);
 
   const clouds = datum.key === 'earth' ? createCloudLayer(radius) : null;

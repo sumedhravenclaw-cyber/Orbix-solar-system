@@ -6,7 +6,15 @@
  * planet looks identical on every load and across reloads.
  */
 
-/** Hash a 2D integer lattice point into [0, 1). */
+/**
+ * Hash a 2D integer lattice point into [0, 1).
+ *
+ * This is the hottest function in the app — roughly thirty calls per painted
+ * pixel — so it is worth knowing what has already been tried: a direct-mapped
+ * memo on the lattice point is *slower*. Both cylindrical coordinates advance
+ * together along a row, so consecutive pixels rarely reuse a lattice corner and
+ * the cache bookkeeping costs more than the Math.sin it avoids.
+ */
 export const hash2 = (x: number, y: number): number => {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
   return s - Math.floor(s);
