@@ -1,6 +1,7 @@
 import { memo, type CSSProperties, type ReactNode } from 'react';
 
 import { useSimulationState } from '../../state/contexts';
+import { SpaceAssistant } from '../assistant/SpaceAssistant';
 import { CataloguePanel } from './CataloguePanel';
 import { IdentityBlock } from './IdentityBlock';
 import { LayerPanel } from './LayerPanel';
@@ -73,6 +74,11 @@ export const ConsoleLayout = memo(function ConsoleLayout() {
       <div aria-hidden="true" />
 
       <div className={styles.railRight}>
+        {/* The guide answers "what am I looking at"; the readout beneath it
+            answers "what are the numbers". Same target, two registers. */}
+        <Slot index={0} side="right">
+          <SpaceAssistant />
+        </Slot>
         <Slot index={1} side="right">
           <TargetReadout />
         </Slot>

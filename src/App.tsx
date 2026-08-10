@@ -7,6 +7,7 @@ import { ConsoleLayout } from './components/hud/ConsoleLayout';
 import { TimeController } from './components/hud/TimeController';
 import { MobileSheet } from './components/mobile/MobileSheet';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { AssistantProvider } from './state/AssistantProvider';
 import { SimulationProvider } from './state/SimulationContext';
 
 /**
@@ -36,7 +37,11 @@ function Shell() {
 export default function App() {
   return (
     <SimulationProvider>
-      <Shell />
+      {/* Inside the simulation: the guide follows `selectedKey`. One instance
+          for the whole app, consumed by both the rail and the mobile sheet. */}
+      <AssistantProvider>
+        <Shell />
+      </AssistantProvider>
     </SimulationProvider>
   );
 }

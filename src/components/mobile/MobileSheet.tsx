@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 
 import { useSimulationState } from '../../state/contexts';
+import { SpaceAssistant } from '../assistant/SpaceAssistant';
 import { CataloguePanel } from '../hud/CataloguePanel';
 import { LayerPanel } from '../hud/LayerPanel';
 import { SystemMap } from '../hud/SystemMap';
@@ -43,6 +44,9 @@ export const MobileSheet = memo(function MobileSheet() {
     <div className={styles.sheet}>
       {selectedKey && open === null && (
         <div className={styles.body}>
+          {/* Same single assistant instance as the desktop rail — this is a
+              consumer, not a second conversation. */}
+          <SpaceAssistant />
           <TargetReadout />
         </div>
       )}
