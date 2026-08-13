@@ -4,6 +4,16 @@ dist-ssr
 *.local
 .vite
 
+# Environment — .env.example is the committed template; real values stay local.
+.env
+.env.*
+!.env.example
+
+# An unrelated project that was checked out inside this one. It carries its own
+# .git directory, so committing it here would nest a repository inside a
+# repository and ship its sources to every deploy.
+dominations/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

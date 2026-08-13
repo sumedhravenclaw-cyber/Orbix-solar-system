@@ -19,6 +19,25 @@
     />
 
     <title>ORBIX SOL — Interactive Solar System</title>
+
+    <!-- Link previews. `og:image` must be an absolute URL — crawlers do not
+         resolve relative paths reliably — so the `absoluteOgUrls` plugin in
+         vite.config.ts rewrites it at build time from the deployment origin. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ORBIX SOL" />
+    <meta property="og:title" content="ORBIX SOL — Interactive Solar System" />
+    <meta
+      property="og:description"
+      content="An interactive 3D solar system simulator. Compressed-scale orbits, true relative orbital periods, procedural planet surfaces, and a live starfield."
+    />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta
+      property="og:image:alt"
+      content="The ORBIX SOL console: a rendered Sun and planetary orbits against a starfield."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>

@@ -1,4 +1,5 @@
 import { BodyLabels } from './components/BodyLabels';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ErrorPanel } from './components/ErrorPanel';
 import { SkipLink } from './components/SkipLink';
 import { Viewport } from './components/Viewport';
@@ -36,12 +37,16 @@ function Shell() {
 
 export default function App() {
   return (
-    <SimulationProvider>
-      {/* Inside the simulation: the guide follows `selectedKey`. One instance
-          for the whole app, consumed by both the rail and the mobile sheet. */}
-      <AssistantProvider>
-        <Shell />
-      </AssistantProvider>
-    </SimulationProvider>
+    // Outside the providers on purpose: a throw while building simulation or
+    // assistant state has to be caught too, and a boundary cannot catch itself.
+    <ErrorBoundary>
+      <SimulationProvider>
+        {/* Inside the simulation: the guide follows `selectedKey`. One instance
+            for the whole app, consumed by both the rail and the mobile sheet. */}
+        <AssistantProvider>
+          <Shell />
+        </AssistantProvider>
+      </SimulationProvider>
+    </ErrorBoundary>
   );
 }

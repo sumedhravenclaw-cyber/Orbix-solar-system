@@ -214,10 +214,10 @@ export class SolarSystemEngine {
     this.#bloomComposer.renderToScreen = false;
     this.#bloomComposer.addPass(new RenderPass(this.#scene, this.#camera));
     // Threshold 0: everything reaching this pass is already the Sun.
-    // Strength 0.45 was matched against the previous whole-screen bloom on a
-    // Sun-filling frame (mean luminance 208 vs 203, hot pixels 54% vs 46%), so
-    // the star looks as it always did — only the planets stopped glowing.
-    this.#bloom = new UnrealBloomPass(new Vector2(width, height), 0.45, 0.6, 0);
+    // Strength was matched at 0.45 against the previous whole-screen bloom, then
+    // eased to 0.38 alongside the photosphere's own output so the star reads as
+    // hot without flaring over the inner planets.
+    this.#bloom = new UnrealBloomPass(new Vector2(width, height), 0.38, 0.6, 0);
     this.#bloomComposer.addPass(this.#bloom);
 
     this.#finalComposer = new EffectComposer(this.#renderer);

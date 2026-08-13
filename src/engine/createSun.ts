@@ -74,8 +74,9 @@ export const createSun = (datum: BodyDatum, pickMaterial: Material): SunAssembly
     uniforms: {
       uGranulation: { value: granulation },
       uTime: { value: 0 },
-      // > 1 on purpose: this is what crosses the bloom threshold.
-      uIntensity: { value: 2.1 },
+      // > 1 on purpose: this is what crosses the bloom threshold. Kept just
+      // above the line — higher values blow the photosphere out to flat white.
+      uIntensity: { value: 1.8 },
     },
     vertexShader,
     fragmentShader,
@@ -90,9 +91,9 @@ export const createSun = (datum: BodyDatum, pickMaterial: Material): SunAssembly
   const halo = new Sprite(
     new SpriteMaterial({
       map: createGlowTexture([
-        [0.0, 'rgba(255,246,214,0.80)'],
-        [0.3, 'rgba(255,186,88,0.30)'],
-        [0.62, 'rgba(255,126,40,0.07)'],
+        [0.0, 'rgba(255,246,214,0.70)'],
+        [0.3, 'rgba(255,186,88,0.26)'],
+        [0.62, 'rgba(255,126,40,0.06)'],
         [1.0, 'rgba(255,110,30,0)'],
       ]),
       blending: AdditiveBlending,

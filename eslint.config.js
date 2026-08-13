@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  // `dominations` is a separate project that lives inside this directory but is
+  // not part of it — linting it reports 70+ problems that no one here can fix.
+  { ignores: ['dist', 'node_modules', 'dominations'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
